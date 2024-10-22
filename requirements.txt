@@ -6,3 +6,5 @@ seaborn>=0.13.2
 tqdm>=4.65.0
 mplfinance>=0.12.10b0
 python-dateutil>=2.9.0post0
+backtrader>=1.9.78.123
+ipython>=8.27.0

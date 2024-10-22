@@ -1,33 +1,32 @@
 import backtrader as bt
 
 
-# Define the EMA (Exponential Moving Average) Crossover Strategy
+# Define the MA (Moving Average) Crossover Strategy Base
 class CrossStrategy(bt.Strategy):
-    params = (('short_period', 10), ('long_period', 20))
+    periods = None # short_period, long_period and should be set before being assigned as strategy to
+    name= 'ma'
 
-    def __init__(self, periods: tuple[tuple[str, int], tuple[str, int]] = params, bt_strategy: bt.indicators = bt.indicators.SMA,
-                 is_log_disabled: bool = False):
+    def __init__(self):
         # validation
-        if periods is None:
-            raise ValueError('EmaCrossStrategy requires period tuple')
-        if len(periods) != 2:
-            raise ValueError('EmaCrossStrategy requires two tuple')
-        if periods.short_period >= periods.long_period:
+        if self.periods is None:
+            raise ValueError('maCrossStrategy requires period tuple')
+        if len(self.periods) != 2:
+            raise ValueError('maCrossStrategy requires two tuple')
+        if self.periods[0] >= self.periods[1]:
             raise ValueError('short_period cannot be greater than or equal to long_period')
-        # Initialize the indicators
-        self.__bt_strategy = bt_strategy
-        self.ema_short = bt_strategy(self.data.close, period=self.params.short_period)
-        self.ema_long = bt_strategy(self.data.close, period=self.params.long_period)
+
+        # Initialize the indicators in children
+        self.short_period_ma = None
+        self.long_period_ma = None
+
         self.trade_list = []  # To keep track of trades
-        self.is_log_disabled = is_log_disabled
-        self.__periods = periods
 
     def next(self):
         if not self.position:  # Check if we are not in a position
-            if self.ema_short < self.ema_long:  # Buy if short EMA crosses below long EMA
+            if self.short_period_ma < self.long_period_ma:  # Buy if short EMA crosses below long EMA
                 self.buy()
         else:
-            if self.ema_short > self.ema_long:  # Sell if short EMA crosses above long EMA
+            if self.short_period_ma > self.long_period_ma:  # Sell if short EMA crosses above long EMA
                 self.sell()
 
     def notify_trade(self, trade):
@@ -67,8 +66,34 @@ class CrossStrategy(bt.Strategy):
             print(trade)
         print("\n")
 
-    def is_sma(self):
-        return self.bt_strategy is bt.indicators.SMA
-
     def get_period(self):
         return self.__periods
+
+    def get_strategy_name(self):
+        pass
+
+
+# Define the SMA (Simple Moving Average) Crossover Strategy
+class SmaCrossStrategy(CrossStrategy):
+    name = 'sma'
+
+    def __init__(self):
+        super().__init__()
+        self.short_period_ma = bt.indicators.SMA(self.data.close, period=self.params[0])
+        self.long_period_ma = bt.indicators.SMA(self.data.close, period=self.params[1])
+
+    def get_strategy_name(self):
+        return self.name
+
+
+# Define the EMA (Exponential Moving Average) Crossover Strategy
+class EmaCrossStrategy(CrossStrategy):
+    name = 'ema'
+
+    def __init__(self):
+        super().__init__()
+        self.short_period_ma = bt.indicators.EMA(self.data.close, period=self.params[0])
+        self.long_period_ma = bt.indicators.EMA(self.data.close, period=self.params[1])
+
+    def get_strategy_name(self):
+        return self.name
