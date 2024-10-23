@@ -1,32 +1,27 @@
 import backtrader as bt
 
 
-# Define the MA (Moving Average) Crossover Strategy Base
+# Define the EMA Crossover Strategy
 class CrossStrategy(bt.Strategy):
-    periods = None # short_period, long_period and should be set before being assigned as strategy to
-    name= 'ma'
+    sma_strategy_name = 'sma'
+    ema_strategy_name = 'ema'
+    periods = None  # (10, 30) a tuple containing short period and long period
+    indicator = None  # bt.indicators.SMA OR bt.indicators.EMA
+    name = None
+    is_log_disabled = False
 
     def __init__(self):
-        # validation
-        if self.periods is None:
-            raise ValueError('maCrossStrategy requires period tuple')
-        if len(self.periods) != 2:
-            raise ValueError('maCrossStrategy requires two tuple')
-        if self.periods[0] >= self.periods[1]:
-            raise ValueError('short_period cannot be greater than or equal to long_period')
-
-        # Initialize the indicators in children
-        self.short_period_ma = None
-        self.long_period_ma = None
-
+        # Initialize the 10-day and 20-day EMA indicators
+        self.ema_short = self.indicator(self.data.close, period=self.periods[0])
+        self.ema_long = self.indicator(self.data.close, period=self.periods[1])
         self.trade_list = []  # To keep track of trades
 
     def next(self):
         if not self.position:  # Check if we are not in a position
-            if self.short_period_ma < self.long_period_ma:  # Buy if short EMA crosses below long EMA
+            if self.ema_short < self.ema_long:  # Buy if short EMA crosses above long EMA
                 self.buy()
         else:
-            if self.short_period_ma > self.long_period_ma:  # Sell if short EMA crosses above long EMA
+            if self.ema_short > self.ema_long:  # Sell if short EMA crosses below long EMA
                 self.sell()
 
     def notify_trade(self, trade):
@@ -47,53 +42,33 @@ class CrossStrategy(bt.Strategy):
             self.trade_list.append(trade_details)
 
     def notify_order(self, order):
-        if self.is_log_disabled:
-            return
         if order.status in [order.Completed]:
             if order.isbuy():
-                print(f"Buy Executed: Price: {order.executed.price}, Size: {order.executed.size}")
+                if not self.is_log_disabled:
+                    print(f"Buy Executed: Price: {order.executed.price}, Size: {order.executed.size}")
             elif order.issell():
-                print(f"Sell Executed: Price: {order.executed.price}, Size: {order.executed.size}")
+                if not self.is_log_disabled:
+                    print(f"Sell Executed: Price: {order.executed.price}, Size: {order.executed.size}")
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            print("Order Failed")
+            if not self.is_log_disabled:
+                print(f"Order Failed: {order.getstatusname()}")
 
     def stop(self):
-        if self.is_log_disabled:
-            return
         # Print list of trades
-        print("List of Trades:")
+        if not self.is_log_disabled:
+            print("List of Trades:")
         for trade in self.trade_list:
-            print(trade)
-        print("\n")
-
-    def get_period(self):
-        return self.__periods
-
-    def get_strategy_name(self):
-        pass
+            if not self.is_log_disabled:
+                print(trade)
 
 
-# Define the SMA (Simple Moving Average) Crossover Strategy
-class SmaCrossStrategy(CrossStrategy):
-    name = 'sma'
-
-    def __init__(self):
-        super().__init__()
-        self.short_period_ma = bt.indicators.SMA(self.data.close, period=self.params[0])
-        self.long_period_ma = bt.indicators.SMA(self.data.close, period=self.params[1])
-
-    def get_strategy_name(self):
-        return self.name
-
-
-# Define the EMA (Exponential Moving Average) Crossover Strategy
-class EmaCrossStrategy(CrossStrategy):
-    name = 'ema'
-
-    def __init__(self):
-        super().__init__()
-        self.short_period_ma = bt.indicators.EMA(self.data.close, period=self.params[0])
-        self.long_period_ma = bt.indicators.EMA(self.data.close, period=self.params[1])
-
-    def get_strategy_name(self):
-        return self.name
+def set_cross_strategy_params(strategy_name: str = CrossStrategy.sma_strategy_name, periods: tuple[int, int] = (10, 30),
+                              is_log_disabled=False):
+    CrossStrategy.periods = periods
+    if strategy_name == CrossStrategy.sma_strategy_name:
+        CrossStrategy.indicator = bt.indicators.SMA
+        CrossStrategy.name = CrossStrategy.sma_strategy_name
+    elif strategy_name == CrossStrategy.ema_strategy_name:
+        CrossStrategy.indicator = bt.indicators.EMA
+        CrossStrategy.name = CrossStrategy.ema_strategy_name
+    CrossStrategy.is_log_disabled = is_log_disabled
