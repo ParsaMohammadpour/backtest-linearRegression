@@ -1,5 +1,7 @@
 import pandas as pd
 import backtrader as bt
+import numpy as np
+import seaborn as sns
 from matplotlib import pyplot as plt
 
 from backtest.strategies.cross_strategy import CrossStrategy, set_cross_strategy_params
@@ -21,6 +23,12 @@ class BackTestSimulator:
         self.__results = dict(zip(self.__stock_names,
                                   [pd.DataFrame(columns=['cerebro', 'profit-loss', 'strategy-name', 'period'])] * len(
                                       self.__stock_names)))
+
+    def get_samples(self):
+        return self.__samples
+
+    def get_results(self):
+        return self.__results
 
     def __period_validation(self, periods: list[tuple[int, int]]):
         for period in periods:
@@ -86,12 +94,15 @@ class BackTestSimulator:
                                                                                  'strategy-name': CrossStrategy.name,
                                                                                  'period': CrossStrategy.periods}
 
-    def best_stock_ma_comparison(self, stock_name: str = '', sma: bool = True, plot: bool = True,
-                                 figsize: tuple[int, int] = (15, 5)):
+    def __get_stock_results(self, stock_name: str = ''):
         if not stock_name in self.__stock_names:
             raise ValueError('Stock name does not exist')
+        return self.__results[stock_name]
 
-        stock_results = self.__results[stock_name]
+    def best_stock_ma_comparison(self, stock_name: str = '', sma: bool = True, plot: bool = True,
+                                 figsize: tuple[int, int] = (15, 7)):
+        stock_results = self.__get_stock_results(stock_name)
+
         strategy_name = CrossStrategy.sma_strategy_name if sma else CrossStrategy.ema_strategy_name
         ma_results = stock_results[stock_results['strategy-name'] == strategy_name]
 
@@ -104,3 +115,42 @@ class BackTestSimulator:
             plt.show()
 
         return best_ma['period'], best_ma['profit-loss'], 100 * best_ma['profit-loss'] / self.__starting_capital
+
+    def stock_ma_compare_plot(self, stock_name: str = None, sma: bool = None, figsize: tuple[int, int] = (15, 5)):
+        if stock_name is None:
+            for stock in self.__stock_names:
+                self.__stock_ma_compare_plot_single(stock_name=stock, sma=sma, figsize=figsize)
+        else:
+            if stock_name not in self.__stock_names:
+                raise ValueError('Stock name does not exist')
+            self.__stock_ma_compare_plot_single(stock_name=stock_name, sma=sma, figsize=figsize)
+
+    def __stock_ma_compare_plot_single(self, stock_name: str = None, sma: bool = None, figsize: tuple[int, int] = (15, 5)):
+        stock_results = self.__get_stock_results(stock_name)
+        plot_title = f'{stock_name} moving average comparison'
+        if sma is not None:
+            strategy_name = CrossStrategy.sma_strategy_name if sma else CrossStrategy.ema_strategy_name
+            plot_title = f'{plot_title} for {strategy_name}'
+            stock_results = stock_results[stock_results['strategy-name'] == strategy_name]
+
+        colors = np.where(stock_results['profit-loss'] < 0, 'crimson', 'deepskyblue')
+        stock_results.plot.bar('period', 'profit-loss', color=colors, figsize=figsize,
+                               title=plot_title)
+        plt.show()
+
+    def stock_compare_sma_and_ema(self, stock_name: str = None, figsize: tuple[int, int] = (15, 5)):
+        if stock_name is None:
+            for stock in self.__stock_names:
+                self.__stock_compare_sma_and_ema_single(stock_name=stock, figsize=figsize)
+        else:
+            if stock_name not in self.__stock_names:
+                raise ValueError('Stock name does not exist')
+            self.__stock_compare_sma_and_ema_single(stock_name=stock_name, figsize=figsize)
+
+    def __stock_compare_sma_and_ema_single(self, stock_name: str = '', figsize: tuple[int, int] = (15, 5)):
+        stock_results = self.__get_stock_results(stock_name).copy()
+        stock_results['period'] = stock_results['period'].astype(str)
+        plt.figure(figsize=figsize)
+        sns.barplot(stock_results, x="period", y="profit-loss", hue="strategy-name")
+        plt.title(f'{stock_name} moving average comparison')
+        plt.show()

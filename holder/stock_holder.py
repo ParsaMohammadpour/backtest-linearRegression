@@ -140,19 +140,19 @@ class StockHolder:
         plt.ylabel('price difference')
         plt.show()
 
-    def year_mean(self, stock_name: str = None, col: str = 'Close'):
+    def year_mean(self, stock_name: str = None, col: str = 'Close', figsize: tuple[int, int] = (15, 5)):
         if stock_name is None:
             for stock in self.__stock_names:
-                self.__year_mean_single(stock, col)
+                self.__year_mean_single(stock, col, figsize)
 
         if not stock_name in self.__samples:
             raise ValueError(f'stock {stock_name} not in samples')
-        self.__year_mean_single(stock_name, col)
+        self.__year_mean_single(stock_name, col, figsize=figsize)
 
-    def __year_mean_single(self, stock_name: str, col: str):
+    def __year_mean_single(self, stock_name: str, col: str, figsize: tuple[int, int] = (15, 5)):
         df = self.__samples[stock_name]
         year_df = df.groupby(df.Date.dt.year)[[col]].mean()
-        year_df.plot.bar(y=col)
+        year_df.plot.bar(y=col, figsize=figsize)
         plt.title(f'{stock_name} year mean')
         plt.show()
 
@@ -161,21 +161,22 @@ class StockHolder:
         plt.figure(figsize=figsize)
         sns.barplot(data=group_df, x='Date', y='Close', hue='Name')
 
-    def year_mean_diff(self, stock_name: str = None, col: str = 'Close'):
+    def year_mean_diff(self, stock_name: str = None, col: str = 'Close', figsize: tuple[int, int] = (15, 5)):
         if stock_name is None:
             for stock in self.__stock_names:
-                self.__year_mean_diff_single(stock, col)
+                self.__year_mean_diff_single(stock, col, figsize)
 
         if not stock_name in self.__samples:
             raise ValueError(f'stock {stock_name} not in samples')
-        self.__year_mean_diff_single(stock_name, col)
+        self.__year_mean_diff_single(stock_name, col, figsize)
 
-    def __year_mean_diff_single(self, stock_name: str, col: str):
+    def __year_mean_diff_single(self, stock_name: str, col: str, figsize: tuple[int, int] = (15, 5)):
         df = self.__samples[stock_name]
         total_mean = df[col].mean() if len(df) > 1 else 0
         year_df = df.groupby(df.Date.dt.year)[[col]].mean()
 
         colors = np.where(year_df[col] - total_mean < 0, 'crimson', 'deepskyblue')
+        plt.figure(figsize=figsize)
         plt.bar(x=year_df.index, height=year_df[col] - total_mean, color=colors, )
         plt.title(f'{stock_name} year - mean')
         plt.xlabel('year')
