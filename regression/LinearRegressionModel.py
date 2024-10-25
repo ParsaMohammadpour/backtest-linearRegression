@@ -3,10 +3,25 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib
 import pandas as pd
+import os
 
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from pylab import rcParams
+
+
+
+
+def save_plot(path):
+    dir = os.path.dirname(path)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+    plt.savefig(path)
+
+def create_directory(path):
+    dir = os.path.dirname(path)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
 
 
 class LinearRegressionModel:
@@ -15,13 +30,16 @@ class LinearRegressionModel:
     mape = 'mape'
 
     def __init__(self, df: pd.DataFrame, stock_name: str, period_max=30, pred_min: float = 0.0, test_size: float = 0.2,
-                 cv_size: float = 0.2, target_col: str = 'Close'):
+                 cv_size: float = 0.2, target_col: str = 'Close', save_data: bool = False,
+                 base_path: str = 'results/linear-regression/'):
         self.__df = df
         self.__stock_name = stock_name
         self.__period_max = period_max
         self.__pred_min = pred_min
         self.__test_size = test_size  # proportion of dataset to be used as test set
         self.__cv_size = cv_size  # proportion of dataset to be used as cross-validation set
+        self.__save_data = save_data  # should save plots
+        self.__base_path = base_path
         self.__mape = []
         self.__rmse = []
         self.__r2 = []
@@ -69,6 +87,8 @@ class LinearRegressionModel:
         ax.set_xlabel('Date')
         ax.set_ylabel('USD')
         plt.title(f'{self.__stock_name}')
+        if self.__save_data:
+            save_plot(f'{self.__base_path}regions/{self.__stock_name}.png')
         plt.show()
 
     def apply_regression(self):
@@ -145,4 +165,35 @@ class LinearRegressionModel:
         plt.ylabel(param)
         plt.xlim([2, 30])
         plt.title(f'{self.__stock_name} {param} vs period(N)')
+        if self.__save_data:
+            save_plot(f'{self.__base_path}params-vs-period/{param}/{self.__stock_name}.png')
         plt.show()
+
+    def predict_future_days(self, days: int = 10, period: int = 5, plot: bool = True,
+                            figsize: tuple[int, int] = (15, 5)) -> pd.DataFrame:
+        regr = LinearRegression(fit_intercept=True)  # Create linear regression object
+        df = np.array(self.__df[self.__target_col][len(self.__df) - period:len(self.__df)])
+        X_train = np.array(range(period))  # e.g. [0 1 2 3 4]
+        X_train = X_train.reshape(-1, 1)
+        for i in range(days + 1):
+            # Plot the linear regression lines
+            y_train = df[i:i + period]
+            y_train = y_train.reshape(-1, 1)
+            regr.fit(X_train, y_train)  # Train the model
+            y_est = regr.predict(np.array([period]).reshape(-1, 1))  # Get linear regression line
+            df = np.concatenate((df.reshape(-1, 1), np.array(y_est[0][0]).reshape(-1, 1)))
+
+        if plot:
+            plt.figure(figsize=figsize)
+            XDF = np.array(range(len(df))) + len(self.__df) - (period + 1)
+            plt.plot(XDF, df, label='prediction')
+
+            DF1 = np.array(self.__df[self.__target_col][0:len(self.__df) - period])
+            plt.plot(DF1, label='old')
+            plt.title(f'{self.__stock_name} future {days} days for period: {period}')
+            plt.legend(loc='best')
+            if self.__save_data:
+                save_plot(f'{self.__base_path}predictions-plot/{self.__stock_name}/future-{days}-days-{period}.png')
+            plt.show()
+
+        return df[period:]
