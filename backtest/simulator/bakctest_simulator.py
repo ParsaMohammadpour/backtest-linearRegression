@@ -105,7 +105,8 @@ class BackTestSimulator:
         new_dic = {'cerebro': cerebro,
                    'profit-loss': profit_loss,
                    'strategy-name': CrossStrategy.name,
-                   'period': str(CrossStrategy.periods)}
+                   'period': str(CrossStrategy.periods),
+                   'trade-no': len(cerebro.broker.orders), }
         new_df = pd.DataFrame(new_dic, index=[0])
         self.__results[stock_name] = (
             self.__results[stock_name].copy() if new_df.empty else new_df.copy() if self.__results[stock_name].empty
@@ -139,7 +140,8 @@ class BackTestSimulator:
                     save_plot(f'{self.__base_path}cerebro/{stock}/{best_ma["period"]}.png')
             res[stock] = {'period': best_ma['period'],
                           'profit-loss': best_ma['profit-loss'],
-                          'profit-loss-percentage': 100 * best_ma['profit-loss'] / self.__starting_capital}
+                          'profit-loss-percentage': 100 * best_ma['profit-loss'] / self.__starting_capital,
+                          'trade-no': best_ma['trade-no'], }
 
         return res
 
@@ -201,5 +203,24 @@ class BackTestSimulator:
         sns.barplot(stock_results, x="period", y="profit-loss", hue="strategy-name")
         plt.title(f'{stock_name} moving average comparison')
         if self.__save_data:
-            save_plot(f'{self.__base_path}sma-vs-ema/{stock_name}.png')
+            save_plot(f'{self.__base_path}sma-vs-ema/profit-loss/{stock_name}.png')
+        plt.show()
+
+    def compare_order_count(self, stock_name: str = None, figsize: tuple[int, int] = (15, 5)):
+        if stock_name is None:
+            for stock in self.__stock_names:
+                self.__compare_order_count_single(stock_name=stock, figsize=figsize)
+        else:
+            if stock_name not in self.__stock_names:
+                raise ValueError('Stock name does not exist')
+            self.__compare_order_count_single(stock_name=stock_name, figsize=figsize)
+
+    def __compare_order_count_single(self, stock_name: str = None, figsize: tuple[int, int] = (15, 5)):
+        df = self.__results[stock_name].copy()
+        df['period'] = df['period'].astype(str)
+        plt.figure(figsize=figsize)
+        sns.barplot(df, x="period", y="trade-no", hue="strategy-name")
+        plt.title(f'{stock_name} moving average comparison')
+        if self.__save_data:
+            save_plot(f'{self.__base_path}sma-vs-ema/order-count/{stock_name}.png')
         plt.show()

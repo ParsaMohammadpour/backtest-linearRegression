@@ -9,6 +9,7 @@ class CrossStrategy(bt.Strategy):
     indicator = None  # bt.indicators.SMA OR bt.indicators.EMA
     name = None
     is_log_disabled = False
+    number_of_trades = None
 
     def __init__(self):
         # Initialize the 10-day and 20-day EMA indicators
@@ -33,6 +34,7 @@ class CrossStrategy(bt.Strategy):
                 exit_price = trade.price  # Set exit price to entry price if size is zero (or handle as needed)
 
             # Log the trade details when a trade is closed
+            self.number_of_trades += 1
             trade_details = {
                 'Entry Price': trade.price,  # Entry price of the trade
                 'Exit Price': exit_price,  # Calculated exit price
@@ -65,6 +67,7 @@ class CrossStrategy(bt.Strategy):
 def set_cross_strategy_params(strategy_name: str = CrossStrategy.sma_strategy_name, periods: tuple[int, int] = (10, 30),
                               is_log_disabled=False):
     CrossStrategy.periods = periods
+    CrossStrategy.number_of_trades = 0
     if strategy_name == CrossStrategy.sma_strategy_name:
         CrossStrategy.indicator = bt.indicators.SMA
         CrossStrategy.name = CrossStrategy.sma_strategy_name
