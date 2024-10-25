@@ -275,6 +275,7 @@ class StockHolder:
         else:
             if not col in self.FINAL_COLUMNS:
                 raise ValueError(f'column {col} not in {self.FINAL_COLUMNS}')
+            col = [col]
         for column in col:
             plt.figure(figsize=figsize)
             sns.lineplot(data=self.__total_df, x=self.__total_df.Date, y=column, hue='Name', color='firebrick')
